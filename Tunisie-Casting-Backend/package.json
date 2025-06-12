@@ -1,0 +1,31 @@
+{
+  "name": "tunisie-casting-backend",
+  "version": "1.0.0",
+  "description": "Backend pour la plateforme Tunisie Casting",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [
+    "casting",
+    "tunisie",
+    "talent",
+    "modele",
+    "acteur",
+    "backend"
+  ],
+  "author": "Ton Nom ou Nom de l'Équipe",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cloudinary": "^1.41.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.3.4",
+    "multer": "^1.4.5-lts.1",
+    "multer-storage-cloudinary": "^4.0.0"
+  }
+}

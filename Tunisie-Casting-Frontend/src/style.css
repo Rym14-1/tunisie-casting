@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', sans-serif;
+  @apply text-gray-800 bg-gray-50;
+  margin: 0;
+  padding: 0;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.router-link-active {
+  @apply text-blue-300 font-semibold;
+}
+
+a {
+  @apply text-blue-600 hover:text-blue-800 transition-colors duration-200;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  @apply font-bold text-gray-900 mb-4;
+}
+
+h1 {
+  @apply text-4xl;
+}
+
+h2 {
+  @apply text-3xl;
+}
+
+button {
+  @apply px-4 py-2 rounded-md transition-colors duration-200;
+}
+
+button.primary {
+  @apply bg-blue-600 text-white hover:bg-blue-700;
+}
+
+button.secondary {
+  @apply bg-gray-200 text-gray-800 hover:bg-gray-300;
+}
+
+.container {
+  @apply mx-auto px-4;
+  max-width: 1200px;
+}
+
+input[type='text'],
+input[type='email'],
+input[type='password'],
+textarea,
+select {
+  @apply border border-gray-300 rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
+
+.flex-center {
+  @apply flex justify-center items-center;
+}
+
+.shadow-lg-custom {
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+@media (max-width: 768px) {
+  .header-nav {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
