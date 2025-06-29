@@ -1,75 +1,95 @@
 // routes/subscriptionRoutes.js
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/authMiddleware');
-const authorize = require('../middleware/roleMiddleware');
-const User = require('../models/user'); r
+const authenticateToken = require('../middlewares/authMiddleware');
+const Subscription = require('../models/Subscription');
 
-const subscriptionPlans = {
-    basic: { price: 30, annualPrice: 300, duration: 30, description: 'Accès aux fiches de talents.' },
-    pro: { price: 60, annualPrice: 600, duration: 30, description: 'Accès aux fiches de talents + professionnels techniques.' },
-    premium: { price: 90, annualPrice: 960, duration: 30, description: 'Accès complet + avantages exclusifs.' }
-};
+router.get('/:userId', authenticateToken, async (req, res) => {
+    try {
+        if (req.userId.toString() !== req.params.userId && req.userRole !== 'admin') {
+            return res.status(403).json({ message: 'Access denied.' });
+        }
 
-// @route   GET /api/subscriptions/plans
-// @desc    Obtenir la liste des plans d'abonnement
-// @access  Public
-router.get('/plans', (req, res) => {
-    res.json(subscriptionPlans);
+        const subscriptions = await Subscription.find({ user: req.params.userId }).populate('user', 'name email');
+        res.json(subscriptions);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error.');
+    }
 });
 
-// @route   POST /api/subscriptions/subscribe
-// @desc    Abonner un utilisateur à un plan
-// @access  Private (utilisateur connecté)
-router.post('/subscribe', auth, async (req, res) => {
-    const { plan, paymentMethod, isAnnual } = req.body; // 
+router.post('/', authenticateToken, async (req, res) => {
+    const { plan, billingCycle, price, transactionId } = req.body;
+    const userId = req.userId; 
 
-    if (!plan || !subscriptionPlans[plan]) {
-        return res.status(400).json({ msg: 'Plan d\'abonnement invalide.' });
+    if (!plan || !billingCycle || price === undefined || price === null) {
+        return res.status(400).json({ message: 'Please provide plan, billing cycle, and price.' });
     }
 
     try {
-        const user = await User.findById(req.user.id);
-        if (!user) {
-            return res.status(404).json({ msg: 'Utilisateur non trouvé.' });
-        }
-
-        const selectedPlan = subscriptionPlans[plan];
+        const startDate = new Date();
         let endDate = new Date();
-        let priceToCharge = isAnnual ? selectedPlan.annualPrice : selectedPlan.price;
-        let durationInDays = isAnnual ? 365 : 30; // 
 
-        endDate.setDate(endDate.getDate() + durationInDays);
+        if (billingCycle === 'monthly') {
+            endDate.setMonth(endDate.getMonth() + 1);
+        } else if (billingCycle === 'yearly') {
+            endDate.setFullYear(endDate.getFullYear() + 1);
+        } else {
+            return res.status(400).json({ message: 'Invalid billing cycle. Must be "monthly" or "yearly".' });
+        }
 
-        user.subscription = {
-            plan: plan,
-            startDate: new Date(),
-            endDate: endDate,
-            isActive: true
-        };
+        let subscription = await Subscription.findOne({ user: userId });
 
-        await user.save();
-        res.json({ msg: `Abonnement au plan '${plan}' activé avec succès pour ${durationInDays} jours.`, user: user.subscription });
+        if (subscription) {
+            subscription.plan = plan;
+            subscription.status = 'active'; 
+            subscription.startDate = startDate;
+            subscription.endDate = endDate;
+            subscription.price = price;
+            subscription.billingCycle = billingCycle;
+            subscription.transactionId = transactionId || subscription.transactionId; 
+        } else {
+            subscription = new Subscription({
+                user: userId,
+                plan,
+                status: 'active',
+                startDate,
+                endDate,
+                price,
+                billingCycle,
+                transactionId
+            });
+        }
+
+        await subscription.save(); 
+
+        res.status(201).json({ message: 'Subscription successfully recorded!', subscription });
 
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Erreur du serveur lors de l\'abonnement.');
+        console.error('Error recording subscription:', err.message);
+        res.status(500).json({ message: 'Internal server error while recording subscription.' });
     }
 });
 
-// @route   GET /api/subscriptions/status
-// @desc    Obtenir le statut d'abonnement de l'utilisateur connecté
-// @access  Private
-router.get('/status', auth, async (req, res) => {
+router.get('/status', authenticateToken, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).select('subscription');
-        if (!user) {
-            return res.status(404).json({ msg: 'Utilisateur non trouvé.' });
+        const userId = req.userId; 
+        
+        const activeSubscription = await Subscription.findOne({
+            user: userId,
+            status: 'active', 
+            endDate: { $gt: new Date() } 
+        });
+
+        if (activeSubscription) {
+            res.json({ isSubscribed: true, plan: activeSubscription.plan, endDate: activeSubscription.endDate });
+        } else {
+            res.json({ isSubscribed: false, plan: null, endDate: null });
         }
-        res.json(user.subscription);
+
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Erreur du serveur.');
+        console.error('Error checking subscription status:', err.message);
+        res.status(500).json({ message: 'Internal server error while checking subscription status.' });
     }
 });
 

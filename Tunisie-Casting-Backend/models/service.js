@@ -1,38 +1,16 @@
 // models/Service.js
 const mongoose = require('mongoose');
 
-const ServiceSchema = new mongoose.Schema({
-    name: {
-        type: String,
-        required: true,
-        trim: true
-    },
-    description: {
-        type: String,
-        required: true
-    },
-    price: { 
-        type: Number,
-        required: true
-    },
-    duration: String, 
-    category: { 
-        type: String,
-        enum: ['shooting_photo', 'creation_book', 'autre'],
-        required: true
-    },
-    images: [{ type: String }], 
-    availability: [{ 
-        date: Date,
-        slots: [{
-            time: String, 
-            isBooked: { type: Boolean, default: false }
-        }]
-    }],
-    dateCreated: {
-        type: Date,
-        default: Date.now
-    }
-}, { timestamps: true });
+const serviceSchema = new mongoose.Schema({
 
-module.exports = mongoose.model('Service', ServiceSchema);
+    name: { type: String, required: true, trim: true },
+    description: { type: String, required: true, trim: true },
+    price: { type: Number, min: 0 },
+    category: { type: String, trim: true }, 
+    provider: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+    
+});
+
+module.exports = mongoose.model('Service', serviceSchema);

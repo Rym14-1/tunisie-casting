@@ -7,18 +7,36 @@ import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import UserProfilPage from '../views/UserProfilPage.vue'
 import DashboardPage from '../views/DashBoardPage.vue'
-import SubscriptionsPage from '../views/SubscriptionsPage.vue'
+import subscriptionPage from '../views/subscriptionPage.vue'
 import TalentDetailPage from '../views/TalentDetailPage.vue'
 import TalentSearchPage from '../views/TalentSearchPage.vue'
 import ProfessionalSearchPage from '../views/ProfessionalSearchPage.vue'
 import FormationsPage from '../views/FormationsPage.vue'
 import ServicesPage from '../views/ServicesPage.vue'
+import MessagePage from '@/views/MessagePage.vue'
+import ForgotPassView from '../views/ForgotPassView.vue'
+import ResetPassView from '../views/ResetPassView.vue'
 
 const routes = [
   {
     path: '/',
     name: 'home',
     component: HomePage,
+  },
+  {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: ForgotPassView,
+  },
+  {
+    path: '/reset-password',
+    name: 'ResetPassword',
+    component: ResetPassView,
+  },
+  {
+    path: '/messages',
+    name: 'Messages',
+    component: MessagePage,
   },
   {
     path: '/userprofil',
@@ -60,7 +78,7 @@ const routes = [
   {
     path: '/subscription',
     name: 'subscriptions',
-    component: SubscriptionsPage,
+    component: subscriptionPage,
   },
   {
     path: '/talentdetail/:id',

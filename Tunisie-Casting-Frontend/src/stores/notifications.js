@@ -18,12 +18,11 @@ export const useNotificationStore = defineStore('notifications', {
       this.loading = true
       this.error = null
       try {
-        // Remplacez par l'URL réelle de votre API de notifications
         const response = await axios.get(
           `http://localhost:5000/api/users/${userId}/notifications`,
           {
             headers: {
-              Authorization: `Bearer ${localStorage.getItem('token')}`, // Assurez-vous d'envoyer le token
+              Authorization: `Bearer ${localStorage.getItem('token')}`,
             },
           },
         )
@@ -48,7 +47,7 @@ export const useNotificationStore = defineStore('notifications', {
             },
           },
         )
-        // Mettre à jour l'état local
+
         const notification = this.notifications.find((n) => n._id === notificationId)
         if (notification) {
           notification.read = true
@@ -60,7 +59,6 @@ export const useNotificationStore = defineStore('notifications', {
       }
     },
 
-    // Pour ajouter une nouvelle notification
     addNotification(notification) {
       this.notifications.unshift(notification)
       if (!notification.read) {

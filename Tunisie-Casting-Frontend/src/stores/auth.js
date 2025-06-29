@@ -1,4 +1,4 @@
-// src/stores/auth.js
+// stores/auth.js
 import { defineStore } from 'pinia'
 import axios from 'axios'
 
@@ -6,53 +6,55 @@ export const useAuthStore = defineStore('auth', {
   state: () => ({
     token: localStorage.getItem('token') || null,
     userRole: localStorage.getItem('userRole') || null,
-    authError: null,
-    authLoading: false,
+    userId: localStorage.getItem('userId') || null,
+    isLoggedIn: !!localStorage.getItem('token'),
   }),
   getters: {
-    isAuthenticated: (state) => !!state.token,
-    getToken: (state) => state.token,
+    isAuthenticated: (state) => state.isLoggedIn,
+
     getUserRole: (state) => state.userRole,
+
+    getUserId: (state) => state.userId,
   },
   actions: {
-    async login(credentials) {
-      this.authLoading = true
-      this.authError = null
-      try {
-        const response = await axios.post('http://localhost:5000/api/auth/login', credentials)
-        const { token, user } = response.data //
+    setLogin(token, userRole, userId) {
+      this.token = token
+      this.userRole = userRole
+      this.userId = userId
+      this.isLoggedIn = true
 
-        this.token = token
-        this.userRole = user.role
-
-        localStorage.setItem('token', token)
-        localStorage.setItem('userRole', user.role)
-
-        window.dispatchEvent(new Event('storage'))
-
-        return true
-      } catch (error) {
-        this.authError =
-          error.response?.data?.message ||
-          'Échec de la connexion. Veuillez vérifier vos identifiants.'
-        console.error('Erreur de connexion:', error.response?.data || error.message)
-        return false
-      } finally {
-        this.authLoading = false
-      }
+      localStorage.setItem('token', token)
+      localStorage.setItem('userRole', userRole)
+      localStorage.setItem('userId', userId)
+      console.log('AuthStore: Utilisateur connecté et informations sauvegardées.')
     },
 
     logout() {
       this.token = null
       this.userRole = null
+      this.userId = null
+      this.isLoggedIn = false
+
       localStorage.removeItem('token')
       localStorage.removeItem('userRole')
-      window.dispatchEvent(new Event('storage'))
+      localStorage.removeItem('userId')
+      console.log('AuthStore: Utilisateur déconnecté et informations supprimées.')
     },
 
-    initializeAuth() {
-      this.token = localStorage.getItem('token') || null
-      this.userRole = localStorage.getItem('userRole') || null
+    async loginUser(email, password) {
+      try {
+        const response = await axios.post('http://localhost:5000/api/auth/login', {
+          email,
+          password,
+        })
+        const { token, user } = response.data
+        this.setLogin(token, user.role, user.id)
+        return true
+      } catch (error) {
+        console.error('AuthStore: Erreur de connexion:', error)
+        this.logout()
+        throw error
+      }
     },
   },
 })

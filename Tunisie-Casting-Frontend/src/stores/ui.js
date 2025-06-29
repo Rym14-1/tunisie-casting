@@ -3,11 +3,11 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 export const useUiStore = defineStore('ui', () => {
-  const isLoading = ref(false) // Pour le loader global
+  const isLoading = ref(false)
   const alert = ref({
     show: false,
     message: '',
-    type: 'info', // 'info', 'success', 'error', 'warning'
+    type: 'info',
   })
 
   const startLoading = () => {

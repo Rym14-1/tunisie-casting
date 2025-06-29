@@ -1,131 +1,96 @@
 <template>
-  <div class="flex items-center justify-center min-h-screen bg-gray-100 p-4">
-    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
-      <h1 class="text-3xl font-bold text-center text-gray-900 mb-8">Connexion</h1>
+  <div class="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+    <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+      <h2 class="text-3xl font-bold text-center text-gray-900 mb-6">Connexion</h2>
       <form @submit.prevent="handleLogin">
-        <div class="mb-5">
-          <label for="email" class="block text-gray-700 text-sm font-semibold mb-2">Email</label>
+        <div class="mb-4">
+          <label for="email" class="block text-gray-700 text-sm font-bold mb-2">Email :</label>
           <input
             type="email"
             id="email"
             v-model="email"
-            class="form-input w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200"
-            placeholder="votre.email@gmail.com"
+            class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
             required
-            autocomplete="email"
           />
         </div>
         <div class="mb-6">
-          <label for="password" class="block text-gray-700 text-sm font-semibold mb-2"
-            >Mot de passe</label
+          <label for="password" class="block text-gray-700 text-sm font-bold mb-2"
+            >Mot de passe :</label
           >
           <input
             type="password"
             id="password"
             v-model="password"
-            class="form-input w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200"
-            placeholder="********"
+            class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
             required
-            autocomplete="current-password"
           />
         </div>
-
         <div
-          v-if="message"
-          :class="[
-            'p-3 mb-4 rounded-md text-sm',
-            messageType === 'error' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700',
-          ]"
+          v-if="error"
+          class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4"
+          role="alert"
         >
-          {{ message }}
+          {{ error }}
         </div>
-
-        <button
-          type="submit"
-          :disabled="loading"
-          class="w-full bg-blue-600 text-white font-bold py-3 rounded-md hover:bg-blue-700 transition-colors duration-300 shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          :class="{ 'opacity-50 cursor-not-allowed': loading }"
-        >
-          <span v-if="loading">Connexion en cours...</span>
-          <span v-else>Se connecter</span>
-        </button>
+        <div class="flex items-center justify-between">
+          <button
+            type="submit"
+            :disabled="loading"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ loading ? 'Connexion en cours...' : 'Se connecter' }}
+          </button>
+          <router-link
+            to="/forgot-password"
+            class="inline-block align-baseline font-bold text-sm text-blue-600 hover:text-blue-800"
+          >
+            Mot de passe oublié ?
+          </router-link>
+        </div>
+        <p class="text-center text-gray-600 text-sm mt-4">
+          Pas encore de compte ?
+          <router-link to="/register" class="font-bold text-blue-600 hover:text-blue-800"
+            >S'inscrire</router-link
+          >
+        </p>
       </form>
-      <p class="text-center text-gray-600 text-sm mt-6">
-        Pas encore de compte ?
-        <router-link to="/register" class="text-blue-600 hover:underline font-semibold"
-          >Inscrivez-vous ici</router-link
-        >
-      </p>
     </div>
   </div>
 </template>
 
-<script>
-import axios from 'axios'
+<script setup>
 import { ref } from 'vue'
+import axios from 'axios'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
-export default {
-  name: 'LoginView',
-  setup() {
-    const email = ref('')
-    const password = ref('')
-    const message = ref('')
-    const messageType = ref('')
-    const loading = ref(false)
+const email = ref('')
+const password = ref('')
+const error = ref(null)
+const loading = ref(false)
+const router = useRouter()
+const authStore = useAuthStore()
 
-    const handleLogin = async () => {
-      message.value = ''
-      messageType.value = ''
-      loading.value = true
+const handleLogin = async () => {
+  loading.value = true
+  error.value = null
+  try {
+    const response = await axios.post('http://localhost:5000/api/auth/login', {
+      email: email.value,
+      password: password.value,
+    })
 
-      try {
-        const response = await axios.post('http://localhost:5000/api/auth/login', {
-          email: email.value,
-          password: password.value,
-        })
+    authStore.setLogin(response.data.token, response.data.user.role, response.data.user.id)
 
-        localStorage.setItem('token', response.data.token)
-
-        if (response.data.user && response.data.user.role) {
-          localStorage.setItem('userRole', response.data.user.role)
-        }
-
-        message.value =
-          response.data.msg || 'Connexion réussie ! Redirection vers le tableau de bord...'
-        messageType.value = 'success'
-
-        window.dispatchEvent(new Event('storage'))
-
-        setTimeout(() => {
-          window.location.href = '/dashboard'
-        }, 1500)
-      } catch (err) {
-        console.error(
-          'Erreur lors de la connexion:',
-          err.response ? err.response.data : err.message,
-        )
-        message.value =
-          err.response && err.response.data && err.response.data.msg
-            ? err.response.data.msg
-            : 'Erreur lors de la connexion. Veuillez vérifier vos identifiants.'
-        messageType.value = 'error'
-      } finally {
-        loading.value = false
-      }
-    }
-
-    return {
-      email,
-      password,
-      message,
-      messageType,
-      loading,
-      handleLogin,
-    }
-  },
+    router.push('/dashboard')
+  } catch (err) {
+    console.error('Erreur de connexion:', err.response?.data || err.message)
+    error.value = err.response?.data?.msg || 'Email ou mot de passe incorrect.'
+    authStore.logout()
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
-<style scoped>
-/* Ajoutez vos styles spécifiques à LoginView ici si nécessaire */
-</style>
+<style scoped></style>

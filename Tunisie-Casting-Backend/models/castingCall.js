@@ -1,49 +1,26 @@
 // models/CastingCall.js
 const mongoose = require('mongoose');
 
-const CastingCallSchema = new mongoose.Schema({
-    castingDirector: { 
-        type: mongoose.Schema.Types.ObjectId, 
-        ref: 'User', 
-        required: true
-    },
-    title: {
-        type: String,
-        required: [true, 'Le titre de l\'annonce est requis'],
-        trim: true
-    },
-    description: {
-        type: String,
-        required: [true, 'La description est requise']
-    },
-    location: {
-        type: String,
-        required: [true, 'Le lieu est requis']
-    },
-    deadline: { 
-        type: Date,
-        required: [true, 'La date limite est requise']
-    },
-    compensation: { 
-        type: String,
-        enum: ['Rémunéré', 'Non Rémunéré', 'À discuter', 'Autre'],
-        default: 'À discuter'
-    },
-    roles: [{ 
-        roleName: { type: String, required: true },
-        ageRange: String, 
-        gender: { type: String, enum: ['Homme', 'Femme', 'Non spécifié'] },
-        description: String
+const castingCallSchema = new mongoose.Schema({
+    title: { type: String, required: true, trim: true },
+    description: { type: String, required: true, trim: true },
+    projectType: { type: String, trim: true }, 
+   
+    roles: [{
+        name: { type: String, required: true, trim: true },
+        gender: { type: String, enum: ['Male', 'Female', 'Other', 'Any'] },
+        ageRange: { type: String, trim: true },
+        details: { type: String, trim: true }
     }],
-    status: { 
-        type: String,
-        enum: ['open', 'closed', 'archived'],
-        default: 'open'
-    },
-    datePosted: {
-        type: Date,
-        default: Date.now 
-    }
-}, { timestamps: true });
+    
+    applicationDeadline: { type: Date },
+    location: { type: String, trim: true },
+    contactEmail: { type: String, trim: true },
 
-module.exports = mongoose.model('CastingCall', CastingCallSchema);
+
+    creator: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+});
+
+module.exports = mongoose.model('CastingCall', castingCallSchema);

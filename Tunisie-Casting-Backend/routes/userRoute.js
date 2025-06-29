@@ -1,58 +1,79 @@
-// routes/profileRoutes.js
+// backend/routes/userRoute.js
 const express = require('express');
 const router = express.Router();
-const authMiddleware = require('../middleware/authMiddleware'); 
-const roleMiddleware = require('../middleware/roleMiddleware'); 
-const User = require('../models/user'); 
+const authenticateToken = require('../middlewares/authMiddleware');
+const User = require('../models/User'); // Importe le modèle User
 
-// @route   GET /api/talents/profile
-// @desc    Obtenir le profil du talent connecté
-// @access  Privé 
-router.get('/talents/profile', authMiddleware, roleMiddleware('talent'), async (req, res) => {
+
+
+router.get('/professionals', async (req, res) => {
     try {
-        const profile = await User.findById(req.user.id).select('-password');
+        const { specialty, experience, location } = req.query;
 
-        if (!profile) {
-            return res.status(404).json({ msg: 'Profil de talent non trouvé.' });
+
+        const query = { profileType: 'Professional' };
+
+
+        if (specialty) {
+
+            query.specialty = { $regex: specialty, $options: 'i' }; 
+        }
+        if (location) {
+
+            query.city = { $regex: location, $options: 'i' };
+        }
+        if (experience) {
+
+            if (experience === 'junior') {
+                query.experience = { $gte: 0, $lte: 2 }; 
+            } else if (experience === 'confirme') {
+                query.experience = { $gte: 3, $lte: 5 }; 
+            } else if (experience === 'senior') {
+                query.experience = { $gte: 6 }; 
+            }
         }
 
-        if (profile.role !== 'talent') {
-            return res.status(403).json({ msg: 'Accès refusé. Rôle incorrect pour cette ressource.' });
-        }
 
-        res.json(profile); 
+        const professionals = await User.find(query)
+                                        .select('-password -resetToken -resetTokenExpiration');
+        
+        res.json(professionals);
     } catch (err) {
-        console.error(err.message);
-
-        if (err.kind === 'ObjectId') {
-            return res.status(400).json({ msg: 'ID utilisateur invalide.' });
-        }
-        res.status(500).send('Erreur serveur lors du chargement du profil talent.');
+        console.error('Erreur lors de la récupération des professionnels avec filtres:', err.message);
+        res.status(500).json({ message: 'Erreur interne du serveur lors du chargement des professionnels.' });
     }
 });
 
-// @route   GET /api/professionals/profile
-// @desc    Obtenir le profil du professionnel/directeur de casting connecté
-// @access  Privé 
-router.get('/professionals/profile', authMiddleware, roleMiddleware('professional_tech', 'casting_director'), async (req, res) => {
+
+
+router.get('/:id', async (req, res) => {
     try {
-        const profile = await User.findById(req.user.id).select('-password');
-
-        if (!profile) {
-            return res.status(404).json({ msg: 'Profil de professionnel/directeur de casting non trouvé.' });
+        const user = await User.findById(req.params.id).select('-password'); 
+        if (!user) {
+            return res.status(404).json({ msg: 'User not found.' });
         }
-
-        if (!['professional_tech', 'casting_director'].includes(profile.role)) {
-            return res.status(403).json({ msg: 'Accès refusé. Rôle incorrect pour cette ressource.' });
-        }
-
-        res.json(profile); 
+        res.json(user);
     } catch (err) {
         console.error(err.message);
-        if (err.kind === 'ObjectId') {
+
+        if (err.name === 'CastError') {
             return res.status(400).json({ msg: 'ID utilisateur invalide.' });
         }
-        res.status(500).send('Erreur serveur lors du chargement du profil professionnel.');
+        res.status(500).send('Server error.');
+    }
+});
+
+
+router.get('/me', authenticateToken, async (req, res) => {
+    try {
+        const user = await User.findById(req.userId).select('-password');
+        if (!user) {
+            return res.status(404).json({ msg: 'Authenticated user not found.' });
+        }
+        res.json(user);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error.');
     }
 });
 

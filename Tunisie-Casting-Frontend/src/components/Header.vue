@@ -1,3 +1,4 @@
+<!-- frontend/src/components/Navbar.vue -->
 <template>
   <header class="bg-blue-700 text-white p-4 shadow-md">
     <div class="container mx-auto flex flex-col md:flex-row justify-between items-center">
@@ -67,6 +68,7 @@
             >
           </li>
 
+          <!-- Boutons affichés si l'utilisateur N'EST PAS authentifié -->
           <template v-if="!isAuthenticated">
             <li>
               <router-link
@@ -84,6 +86,7 @@
             </li>
           </template>
 
+          <!-- Boutons affichés si l'utilisateur EST authentifié -->
           <template v-else>
             <li>
               <router-link
@@ -117,40 +120,87 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
 
 const isAuthenticated = ref(false)
 const router = useRouter()
 
-const checkAuth = () => {
-  isAuthenticated.value = !!localStorage.getItem('token')
+const checkAuth = async () => {
+  const token = localStorage.getItem('token')
+  console.log('Navbar: checkAuth() démarré. Token dans localStorage:', !!token)
+
+  if (!token) {
+    isAuthenticated.value = false
+    console.log('Navbar: Aucun token trouvé. Non authentifié.')
+    return
+  }
+
+  try {
+    console.log('Navbar: Tentative de validation du token avec /api/profile/me...')
+
+    const response = await axios.get('http://localhost:5000/api/profile/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    isAuthenticated.value = true
+    console.log(
+      'Navbar: Token validé par le backend (Statut:',
+      response.status,
+      "). L'utilisateur est authentifié. isAuthenticated:",
+      isAuthenticated.value,
+    )
+  } catch (error) {
+    console.error(
+      'Navbar: La validation du token a échoué:',
+      error.response ? error.response.status : error.message,
+    )
+    localStorage.removeItem('token')
+    localStorage.removeItem('userRole')
+    localStorage.removeItem('userId')
+    localStorage.removeItem('userData')
+    isAuthenticated.value = false
+    console.log(
+      "Navbar: Token invalide effacé. L'utilisateur n'est pas authentifié. isAuthenticated:",
+      isAuthenticated.value,
+    )
+  }
 }
 
 const handleLogout = () => {
+  console.log('Navbar: Déconnexion initiée.')
   localStorage.removeItem('token')
   localStorage.removeItem('userRole')
+  localStorage.removeItem('userId')
   localStorage.removeItem('userData')
   isAuthenticated.value = false
+  console.log('Navbar: Token et données supprimés. isAuthenticated:', isAuthenticated.value)
   router.push('/login')
 }
 
 const handleStorageChange = (event) => {
-  if (event.key === 'token') {
+  console.log('Navbar: Événement "storage" détecté:', event)
+  if (
+    event.key === 'token' ||
+    event.key === 'userRole' ||
+    event.key === 'userId' ||
+    event.key === null
+  ) {
+    console.log(
+      "Navbar: Changement de clé pertinente détecté dans localStorage. Re-vérification de l'authentification.",
+    )
     checkAuth()
   }
 }
 
 onMounted(() => {
+  console.log("Navbar: Composant monté. Effectue la vérification initiale de l'authentification.")
   checkAuth()
   window.addEventListener('storage', handleStorageChange)
 })
 
 onUnmounted(() => {
+  console.log('Navbar: Composant démonté. Nettoyage de l\'écouteur "storage".')
   window.removeEventListener('storage', handleStorageChange)
 })
 </script>
 
-<style scoped>
-.auth-buttons li:not(:last-child) {
-  margin-right: 0.5rem;
-}
-</style>
+<style scoped></style>

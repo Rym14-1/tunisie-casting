@@ -50,8 +50,6 @@
         </div>
       </div>
 
-      ---
-
       <section class="my-8 p-6 bg-red-50 rounded-xl shadow-lg border border-red-200">
         <h2 class="text-3xl font-bold text-red-800 mb-6 text-center">
           Mes Notifications ({{ unreadNotificationsCount }})
@@ -75,7 +73,9 @@
           >
             <div class="flex-grow text-left">
               <p :class="{ 'font-bold': !notification.read }">{{ notification.message }}</p>
-              <p class="text-xs text-gray-500 mt-1">{{ notification.timestamp }}</p>
+              <p class="text-xs text-gray-500 mt-1">
+                {{ formatTimestamp(notification.timestamp) }}
+              </p>
             </div>
             <div class="flex space-x-2 ml-4">
               <button
@@ -105,8 +105,6 @@
         </div>
       </section>
 
-      ---
-
       <div class="mt-12 text-center">
         <h2 class="text-3xl font-bold text-gray-900 mb-4">Accès Rapide</h2>
         <div class="flex flex-wrap justify-center gap-4">
@@ -135,6 +133,8 @@
 </template>
 
 <script>
+import axios from 'axios'
+
 export default {
   name: 'DashboardPage',
   data() {
@@ -145,68 +145,76 @@ export default {
   },
   computed: {
     unreadNotificationsCount() {
-      return this.notifications.filter((n) => !n.read).length
+      return this.notifications.filter((n) => !n.isRead).length
     },
   },
   mounted() {
     this.fetchNotifications()
+
+    window.addEventListener('storage', this.handleStorageChange)
+  },
+  beforeUnmount() {
+    window.removeEventListener('storage', this.handleStorageChange)
   },
   methods: {
+    handleStorageChange(event) {
+      if (event.key === 'token' || event.key === 'newNotificationEvent') {
+        console.log('Dashboard: Changement de storage détecté, re-fetching notifications.')
+        this.fetchNotifications()
+      }
+    },
     async fetchNotifications() {
       this.loadingNotifications = true
+      this.error = null
       try {
-        const response = await axios.get('/api/user/notifications', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        const token = localStorage.getItem('token')
+        if (!token) {
+          console.warn(
+            "Aucun token d'authentification trouvé. Les notifications pourraient ne pas être chargées.",
+          )
+          this.notifications = []
+          return
+        }
+
+        const response = await axios.get('http://localhost:5000/api/user/notifications', {
+          headers: { Authorization: `Bearer ${token}` },
         })
-        this.notifications = response.data
 
-        await new Promise((resolve) => setTimeout(resolve, 800))
-
-        this.notifications = [
-          {
-            id: 1,
-            message: 'Nouvelle demande de collaboration de Sarah M. pour votre projet.',
-            timestamp: '05/06/2025 10:30',
-            read: false,
-          },
-          {
-            id: 2,
-            message: 'Vous avez reçu un nouveau message de Karim D. dans votre boîte de réception.',
-            timestamp: '05/06/2025 09:15',
-            read: false,
-          },
-          {
-            id: 3,
-            message: 'Votre profil a été consulté 15 fois cette semaine !',
-            timestamp: '04/06/2025 18:00',
-            read: true,
-          },
-          {
-            id: 4,
-            message: 'Rappel: Votre abonnement Premium expire dans 7 jours.',
-            timestamp: '03/06/2025 14:00',
-            read: false,
-          },
-        ]
+        this.notifications = response.data.map((notification) => ({
+          ...notification,
+          read: notification.isRead,
+          id: notification._id,
+        }))
       } catch (err) {
         console.error('Erreur lors du chargement des notifications:', err)
+        this.notifications = []
+        this.error = 'Impossible de charger vos notifications. Veuillez réessayer.'
       } finally {
         this.loadingNotifications = false
       }
     },
     async markAsRead(notificationId) {
       const notification = this.notifications.find((n) => n.id === notificationId)
-      if (notification) {
+      if (notification && !notification.read) {
+        const originalReadState = notification.read
         notification.read = true
 
         try {
-          // await axios.put(`/api/notifications/${notificationId}/read`, {}, {
-          //   headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-          // });
-          console.log(`Notification ${notificationId} marquée comme lue.`)
+          const token = localStorage.getItem('token')
+          // *** Utiliser le port 5000 ***
+          await axios.put(
+            `http://localhost:5000/api/notifications/${notificationId}/read`,
+            {},
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          )
+          console.log(`Notification ${notificationId} marquée comme lue sur le serveur.`)
+
+          notification.isRead = true
         } catch (error) {
           console.error('Erreur lors de la mise à jour de la notification:', error)
-          notification.read = false
+          notification.read = originalReadState
         }
       }
     },
@@ -215,24 +223,20 @@ export default {
       this.notifications = this.notifications.filter((n) => n.id !== notificationId)
 
       try {
-        // await axios.delete(`/api/notifications/${notificationId}`, {
-        //   headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        // });
-        console.log(`Notification ${notificationId} supprimée.`)
+        const token = localStorage.getItem('token')
+        await axios.delete(`http://localhost:5000/api/notifications/${notificationId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        console.log(`Notification ${notificationId} supprimée du serveur.`)
       } catch (error) {
         console.error('Erreur lors de la suppression de la notification:', error)
-        this.notifications = originalNotifications // Revert if API call fails
+        this.notifications = originalNotifications
       }
     },
     async confirmClearAllNotifications() {
-      // const confirmed = await this.$refs.confirmModal.show('Êtes-vous sûr de vouloir supprimer toutes les notifications ?');
-
-      const isConfirmed = await new Promise((resolve) => {
-        console.log(
-          'Would show a confirmation modal now: "Êtes-vous sûr de vouloir supprimer toutes les notifications ?"',
-        )
-        resolve(true)
-      })
+      const isConfirmed = window.confirm(
+        'Êtes-vous sûr de vouloir supprimer toutes les notifications ? Cette action est irréversible.',
+      )
 
       if (isConfirmed) {
         this.clearAllNotifications()
@@ -245,11 +249,29 @@ export default {
       this.notifications = []
 
       try {
+        const token = localStorage.getItem('token')
+
+        await axios.delete('http://localhost:5000/api/user/notifications', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
         console.log('Toutes les notifications ont été supprimées du serveur.')
       } catch (error) {
         console.error('Erreur lors de la suppression de toutes les notifications:', error)
         this.notifications = originalNotifications
       }
+    },
+
+    formatTimestamp(isoString) {
+      if (!isoString) return ''
+      const date = new Date(isoString)
+
+      return date.toLocaleDateString('fr-FR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
     },
   },
 }

@@ -24,6 +24,11 @@
             <option value="technicien_lumiere">Technicien lumière</option>
             <option value="technicien_son">Technicien son</option>
             <option value="community_manager">Community Manager</option>
+            <option value="maquilleur">Maquilleur</option>
+            <option value="coiffeur">Coiffeur</option>
+            <option value="styliste">Styliste</option>
+            <option value="regisseur">Régisseur</option>
+            <option value="monteur">Monteur</option>
           </select>
         </div>
         <div>
@@ -64,7 +69,7 @@
     <div v-else-if="error" class="text-center text-red-500 text-xl py-10">
       <p>{{ error }}</p>
       <button
-        @click="fetchProfessionals"
+        @click="fetchProfessionals(filters)"
         class="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors duration-200"
       >
         Réessayer
@@ -72,7 +77,7 @@
     </div>
 
     <div
-      v-else-if="filteredProfessionals.length === 0"
+      v-else-if="professionals.length === 0"
       class="text-center text-gray-600 p-8 bg-white rounded-lg shadow-md"
     >
       <p>Aucun professionnel trouvé pour les critères de recherche.</p>
@@ -80,7 +85,7 @@
 
     <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       <ProfessionalCard
-        v-for="professional in filteredProfessionals"
+        v-for="professional in professionals"
         :key="professional.id"
         :professional="professional"
       />
@@ -96,7 +101,7 @@
           Pour consulter les fiches détaillées des professionnels et les contacter, veuillez
           souscrire à un abonnement.
         </p>
-        <button @click="router.push('/abonnements')" class="button primary mb-4">
+        <button @click="router.push('/subscription')" class="button primary mb-4">
           Voir les offres d'abonnement
         </button>
         <button @click="showSubscriptionModal = false" class="button secondary ml-2">Fermer</button>
@@ -106,7 +111,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import ProfessionalCard from '@/components/ProfessionalCard.vue'
@@ -115,7 +120,7 @@ import axios from 'axios'
 const router = useRouter()
 const authStore = useAuthStore()
 
-const allProfessionals = ref([])
+const professionals = ref([])
 const loading = ref(true)
 const error = ref(null)
 
@@ -127,16 +132,24 @@ const filters = ref({
 
 const showSubscriptionModal = ref(false)
 
-const fetchProfessionals = async () => {
+const fetchProfessionals = async (currentFilters) => {
   loading.value = true
   error.value = null
   try {
-    const response = await axios.get('http://localhost:5000/api/users/professionals')
-    allProfessionals.value = response.data.map((user) => ({
+    const params = new URLSearchParams()
+    if (currentFilters.specialty) params.append('specialty', currentFilters.specialty)
+    if (currentFilters.experience) params.append('experience', currentFilters.experience)
+    if (currentFilters.location) params.append('location', currentFilters.location)
+
+    const response = await axios.get(
+      `http://localhost:5000/api/users/professionals?${params.toString()}`,
+    )
+
+    professionals.value = response.data.map((user) => ({
       id: user._id,
       name: user.name,
-      specialty: user.specialty ? user.specialty.toLowerCase() : '',
-      experience: user.experience !== undefined ? convertExperience(user.experience) : '',
+      specialty: user.specialty,
+      experience: user.experience,
       location: user.city,
       profilePic: user.profilePhotoUrl || 'https://placehold.co/150x150/CCCCCC/FFFFFF?text=PROFIL',
       shortBio: user.bio,
@@ -152,34 +165,13 @@ const fetchProfessionals = async () => {
   }
 }
 
-const convertExperience = (years) => {
-  if (years >= 0 && years <= 2) return 'junior'
-  if (years >= 3 && years <= 5) return 'confirme'
-  if (years >= 6) return 'senior'
-  return ''
-}
-
-const filteredProfessionals = computed(() => {
-  return allProfessionals.value.filter((professional) => {
-    const matchesSpecialty = filters.value.specialty
-      ? professional.specialty === filters.value.specialty
-      : true
-    const matchesExperience = filters.value.experience
-      ? professional.experience === filters.value.experience
-      : true
-    const matchesLocation = filters.value.location
-      ? professional.location.toLowerCase().includes(filters.value.location.toLowerCase())
-      : true
-    return matchesSpecialty && matchesExperience && matchesLocation
-  })
-})
-
 const applyFilters = () => {
   console.log('Filtres appliqués :', filters.value)
+  fetchProfessionals(filters.value)
 }
 
 onMounted(() => {
-  fetchProfessionals()
+  fetchProfessionals(filters.value)
 
   if (!authStore.isLoggedIn) {
     showSubscriptionModal.value = true
@@ -187,4 +179,17 @@ onMounted(() => {
 })
 </script>
 
-<style scoped></style>
+<style scoped lang="postcss">
+.input-field {
+  @apply w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200;
+}
+.button {
+  @apply px-6 py-2 rounded-md font-semibold transition-colors duration-200;
+}
+.button.primary {
+  @apply bg-blue-600 text-white hover:bg-blue-700;
+}
+.button.secondary {
+  @apply bg-gray-200 text-gray-800 hover:bg-gray-300;
+}
+</style>

@@ -57,8 +57,7 @@ export default {
       this.loading = true
       this.error = null
       try {
-        // on va remplacer par l'URL reelle  API backend
-        const response = await axios.get('http://localhost:3000/api/professionals', {
+        const response = await axios.get('http://localhost:5000/api/professionals', {
           params: this.filters,
         })
         this.professionals = response.data
